@@ -2,7 +2,7 @@
 
 Inspired in persistence sniper, Boromir was built from the need to create a timeline of all existing persistencies in a system, so that an analyst is able both to perform a complete analysis and to focus on the red zone of the incident.
 
-![image](https://github.com/skyg4mb/boromir/assets/16138308/838c4346-2ac0-46da-8536-89280c143695)
+![image](https://github.com/skyg4mb/Persistence_Boromir/assets/16138308/68ffaefe-0270-4e1c-af00-f08c1c5fdb53)
 
 
 # Execution
