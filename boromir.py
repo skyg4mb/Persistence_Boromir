@@ -37,7 +37,7 @@ def parse_arguments():
     parser.add_argument("--source-evidence", help="Directory of windows machine was mount")
     parser.add_argument("--csv-output", help="Resulting CSV")
     parser.add_argument("--timezone", help="All date will be converted to the specific timezone")
-    parser.add_argument("action", help="choose the action to perform",choices=['all', 'Get-Run', 'Get-RunOnce', 'Get-RunEx'])
+    parser.add_argument("action", help="choose the action to perform",choices=['all', 'Get-Run', 'Get-RunOnce', 'Get-RunEx', 'Get-RunOnceEx', 'Get-ImageFileExecutionOptions', 'Get-NLDPDllOverridePath', 'Get-Aedebug', 'Get-WerFaultHangs', 'Get-CmdAutorun', 'Get-ExplorerLoad', 'Get-WinlogonUserinit', 'Get-WinlogonShell', 'Get-TerminalProfileStartOnUserLogin', 'Get-AppCertDlls', 'Get-AppPaths', 'Get-ServiceDlls', 'Get-GPExtensionDlls', 'Get-WinlogonMPNotify', 'Get-CHMHelperDll', 'Get-StartupPrograms', 'Get-ScheduledTasks', 'Get-WindowsServices', 'Get-UserInitMprScript', 'Get-HHCtrlHijacking'])
 
     args = parser.parse_args()
 
@@ -453,37 +453,39 @@ def Get_CmdAutorun():
     for hive in hives:
         try:
             reg = Registry.Registry(hive)
-            cmdAutoRun = reg.open("Software\Microsoft\Command Processor\AutoRun")      
+            cmdAutoRun = reg.open("Software\Microsoft\Command Processor")      
             for value in cmdAutoRun.values():
-                persistence = Persistence()
-                persistence.Timestamp = cmdAutoRun.timestamp().strftime(format_date)
-                persistence.Path = "Name: " + str(value.name())
-                persistence.AccessGained = "User"
-                persistence.Technique = "Command Processor AutoRun key"
-                persistence.Classification = "Uncatalogued Technique N.1"
-                persistence.Reference = "https://persistence-info.github.io/Data/cmdautorun.html"
-                persistence.Value = "CmdAutoRun"
-                print("\t" + persistence.Path)
-                persistences.append(persistence)
+                if (str(value.name()) == "Autorun"):
+                    persistence = Persistence()
+                    persistence.Timestamp = cmdAutoRun.timestamp().strftime(format_date)
+                    persistence.Path = "Name: " + str(value.value())
+                    persistence.AccessGained = "User"
+                    persistence.Technique = "Command Processor AutoRun key"
+                    persistence.Classification = "Uncatalogued Technique N.1"
+                    persistence.Reference = "https://persistence-info.github.io/Data/cmdautorun.html"
+                    persistence.Value = "CmdAutoRun"
+                    print("\t" + persistence.Path)
+                    persistences.append(persistence)
         except Exception as e:
             None
 
 
         try:
             reg = Registry.Registry(hive)
-            cmdAutoRun = reg.open("Microsoft\Command Processor\AutoRun")      
+            cmdAutoRun = reg.open("Microsoft\Command Processor")      
             
             for value in cmdAutoRun.values():
-                persistence = Persistence()
-                persistence.Timestamp = cmdAutoRun.timestamp().strftime(format_date)
-                persistence.Path = "Name: " + str(value.name())
-                persistence.AccessGained = "User"
-                persistence.Technique = "Command Processor AutoRun key"
-                persistence.Classification = "Uncatalogued Technique N.1"
-                persistence.Reference = "https://persistence-info.github.io/Data/cmdautorun.html"
-                persistence.Value = "CmdAutoRun"
-                print("\t" + persistence.Path)
-                persistences.append(persistence)
+                if (str(value.name()) == "Autorun"):  
+                    persistence = Persistence()
+                    persistence.Timestamp = cmdAutoRun.timestamp().strftime(format_date)
+                    persistence.Path = "Name: " + str(value.value())
+                    persistence.AccessGained = "User"
+                    persistence.Technique = "Command Processor AutoRun key"
+                    persistence.Classification = "Uncatalogued Technique N.1"
+                    persistence.Reference = "https://persistence-info.github.io/Data/cmdautorun.html"
+                    persistence.Value = "CmdAutoRun"
+                    print("\t" + persistence.Path)
+                    persistences.append(persistence)
         except Exception as e:
             None
 
@@ -619,20 +621,24 @@ def Get_WinlogonShell():
 def Get_TerminalProfileStartOnUserLogin(files):
     print ("+ Checking if users' Windows Terminal Profile's settings.json contains a startOnUserLogin value.")
 
-    for file in files:
-        with open(file) as setFile:
-            for item in setFile:
-                if "commandline" in item:
-                    persistence = Persistence()
-                    persistence.Timestamp = datetime.datetime.fromtimestamp(modification_date(file))
-                    persistence.Path = item.replace('\n', '').strip()
-                    persistence.AccessGained = "System"
-                    persistence.Technique = "Windows Terminal startOnUserLogin"
-                    persistence.Classification = "Uncatalogued Technique N.3"
-                    persistence.Reference = "https://twitter.com/nas_bench/status/1550836225652686848"
-                    persistence.Value = "startOnUserLogin"   
-                    print("\t" + persistence.Path)     
-                    persistences.append(persistence)
+
+    try:
+        for file in files:
+            with open(file) as setFile:
+                for item in setFile:
+                    if "commandline" in item:
+                        persistence = Persistence()
+                        persistence.Timestamp = datetime.datetime.fromtimestamp(modification_date(file))
+                        persistence.Path = item.replace('\n', '').strip()
+                        persistence.AccessGained = "System"
+                        persistence.Technique = "Windows Terminal startOnUserLogin"
+                        persistence.Classification = "Uncatalogued Technique N.3"
+                        persistence.Reference = "https://twitter.com/nas_bench/status/1550836225652686848"
+                        persistence.Value = "startOnUserLogin"   
+                        print("\t" + persistence.Path)     
+                        persistences.append(persistence)
+    except:
+        print("Windows terminal startOnUserLogin not detected")
 
 def Get_AppCertDlls():
     print("+ Getting AppCertDlls properties.")
@@ -921,7 +927,7 @@ def Get_ScheduledTasks():
     for hive in hives:
         try:
             reg = Registry.Registry(hive)
-            tasks = reg.open("Microsoft\\Windows NT\\CurrentVersion\\Schedule\\TaskCache\\Tasks")
+            tasks = reg.open("Microsoft\Windows NT\CurrentVersion\Schedule\TaskCache\Tasks")
     
             for task in tasks.subkeys():
                 try:
@@ -930,7 +936,7 @@ def Get_ScheduledTasks():
                     timestamp = "???"
 
                 try:
-                    path = task.value("Source").value()
+                    path = task.value("Path").value()
                 except:
                     path = "???"
 
@@ -950,8 +956,9 @@ def Get_ScheduledTasks():
 
         try:
             reg = Registry.Registry(hive)
-            tasks = reg.open("SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Schedule\\TaskCache\\Tasks")
-        
+            tasks = reg.open("SOFTWARE\Microsoft\Windows NT\CurrentVersion\Schedule\TaskCache\Tasks")
+            
+
             for task in tasks.subkeys():
                 try:
                     timestamp = task.timestamp().strftime(format_date)
@@ -959,7 +966,7 @@ def Get_ScheduledTasks():
                     timestamp = "???"
 
                 try:
-                    path = task.value("Source").value()
+                    path = task.value("Path").value()
                 except:
                     path = "???"
 
@@ -1124,8 +1131,9 @@ def get_settings_json_files(args):
 def get_startupfiles(args):
     users_list = os.listdir(args.source_evidence + "/Users/")
     startup_files = []
-
+    
     for user in users_list:
+        print(user)
         try:
             startup = os.listdir(args.source_evidence + "/Users/" + user + "/AppData/Roaming/Microsoft/Windows/Start Menu/Programs/Startup/")
             for program in startup:
@@ -1133,6 +1141,20 @@ def get_startupfiles(args):
         except:
             None
     
+    return startup_files
+
+def get_startupfiles2(args):
+    users_list = os.listdir(args.source_evidence + "/Users/")
+    startup_files = []
+
+    for user in users_list:
+        try:
+            startup = os.listdir(args.source_evidence + "/ProgramData/Microsoft/Windows/Start Menu/Programs/Startup/")
+            for program in startup:
+                startup_files.append(args.source_evidence + "/ProgramData/Microsoft/Windows/Start Menu/Programs/Startup/" + program)
+        except:
+            None
+
     return startup_files
 
 
@@ -1200,6 +1222,8 @@ def run_all(args):
     Get_CHMHelperDll()
     startup = get_startupfiles(args)
     Get_StartupPrograms(startup)
+    startup = get_startupfiles2(args)
+    Get_StartupPrograms(startup)
     Get_ScheduledTasks()
     Get_WindowsServices()
     Get_UserInitMprScript()
@@ -1250,6 +1274,8 @@ def main(arguments):
         Get_CHMHelperDll()
     elif arguments.action == "Get-StartupPrograms":
         startup = get_startupfiles(arguments)
+        Get_StartupPrograms(startup)
+        startup = get_startupfiles2(arguments)
         Get_StartupPrograms(startup)
     elif arguments.action == "Get-ScheduledTasks":
         Get_ScheduledTasks()
