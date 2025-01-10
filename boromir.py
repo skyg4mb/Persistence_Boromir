@@ -1113,89 +1113,115 @@ def rec(key):
         rec(subkey)
 
 def get_settings_json_files(args):
-
-    users_list = os.listdir(args.source_evidence + "/Users/")
+    print("+ Searching for settings.json files...")
+    base_dir = args.source_evidence
     settings_json = []
 
-    for user in users_list:
-        try:
-            packages = os.listdir(args.source_evidence + "/Users/" + user + "/AppData/Local/Packages/")
-            for package in packages:
-                if "Microsoft.WindowsTerminal" in package:
-                    settings_json.append(args.source_evidence + "/Users/" + user + "/AppData/Local/Packages/" + package + "/LocalState/settings.json")
-        except:
-            None
+    # Verifica si la carpeta Users existe
+    users_dir = os.path.join(base_dir, "Users")
+    if os.path.exists(users_dir):
+        # Si existe, busca dentro de los directorios de usuarios
+        users_list = os.listdir(users_dir)
+        for user in users_list:
+            try:
+                packages = os.listdir(os.path.join(users_dir, user, "AppData/Local/Packages"))
+                for package in packages:
+                    if "Microsoft.WindowsTerminal" in package:
+                        settings_json.append(os.path.join(users_dir, user, "AppData/Local/Packages", package, "LocalState/settings.json"))
+            except Exception:
+                pass
+    else:
+        # Si no existe, busca settings.json en la carpeta base
+        for root, dirs, files in os.walk(base_dir):
+            for file in files:
+                if file == "settings.json":
+                    settings_json.append(os.path.join(root, file))
 
+    if not settings_json:
+        print("No settings.json files found.")
+    else:
+        for file in settings_json:
+            print("\tFound settings.json: " + file)
+    
     return settings_json
 
+
 def get_startupfiles(args):
-    users_list = os.listdir(args.source_evidence + "/Users/")
+    print("+ Searching for startup files...")
     startup_files = []
-    
-    for user in users_list:
-        print(user)
-        try:
-            startup = os.listdir(args.source_evidence + "/Users/" + user + "/AppData/Roaming/Microsoft/Windows/Start Menu/Programs/Startup/")
-            for program in startup:
-                startup_files.append(args.source_evidence + "/Users/" + user + "/AppData/Roaming/Microsoft/Windows/Start Menu/Programs/Startup/" + program)
-        except:
-            None
-    
+    base_dir = args.source_evidence
+
+    # Verifica si existe la carpeta Users
+    users_dir = os.path.join(base_dir, "Users")
+    if os.path.exists(users_dir):
+        # Si existe, busca en las carpetas de inicio de los usuarios
+        users_list = os.listdir(users_dir)
+        for user in users_list:
+            try:
+                startup = os.listdir(os.path.join(users_dir, user, "AppData/Roaming/Microsoft/Windows/Start Menu/Programs/Startup"))
+                for program in startup:
+                    startup_files.append(os.path.join(users_dir, user, "AppData/Roaming/Microsoft/Windows/Start Menu/Programs/Startup", program))
+            except Exception:
+                pass
+    else:
+        # Si no existe, busca archivos relacionados con Startup en la carpeta base
+        for root, dirs, files in os.walk(base_dir):
+            for file in files:
+                if "Startup" in root:  # Busca en carpetas relacionadas con Startup
+                    startup_files.append(os.path.join(root, file))
+
+    if not startup_files:
+        print("No startup files found.")
+    else:
+        for file in startup_files:
+            print("\tFound startup file: " + file)
+
     return startup_files
+
+
 
 def get_startupfiles2(args):
-    users_list = os.listdir(args.source_evidence + "/Users/")
-    startup_files = []
-
-    for user in users_list:
-        try:
-            startup = os.listdir(args.source_evidence + "/ProgramData/Microsoft/Windows/Start Menu/Programs/Startup/")
-            for program in startup:
-                startup_files.append(args.source_evidence + "/ProgramData/Microsoft/Windows/Start Menu/Programs/Startup/" + program)
-        except:
-            None
-
-    return startup_files
-
+    return get_startupfiles(args)
 
 
 def Get_Hives(args):
-    print ("+ Getting hives...")
-    configDir = "/Windows/System32/config"
-    UsersDir = "/Users"
-    dir_list = os.listdir(args.source_evidence + configDir)
+    print("+ Getting hives...")
+    # Usa directamente la carpeta proporcionada como fuente de hives
+    hives_dir = args.source_evidence
+    try:
+        # Lista los archivos en el directorio proporcionado
+        dir_list = os.listdir(hives_dir)
 
-    
-    for file in dir_list:
-        hives.append(args.source_evidence + configDir + "/" + file)
+        # Busca los archivos estándar de los hives
+        for file in dir_list:
+            if file in ["SYSTEM", "SOFTWARE", "SAM", "SECURITY", "DEFAULT"] or "NTUSER" in file.upper():
+                hives.append(os.path.join(hives_dir, file))
 
-    user_list = os.listdir(args.source_evidence + "/Users")
+        if not hives:
+            print("No registry hives found in the specified directory.")
+        else:
+            for hive in hives:
+                print("\t" + hive)
+    except Exception as e:
+        print(f"Error accessing the directory: {e}")
 
-    for user in user_list:
-        user_dir = args.source_evidence + UsersDir + "/" + user
-        try:
-            userhives = os.listdir(user_dir)
-            for hive in userhives:
-                if "ntuser" in hive or "NTUSER" in hive:
-                    try:
-                        hives.append(user_dir + "/" + hive)
-                    except:
-                        None
-
-        except:
-            None
-        
-
-    for hive in hives:
-        print("\t" + hive)
 
 def output(args):
-    #Definicion de output, puede ser escribir en un archivo de texto o solo print.
+    # Ordenar la lista persistences por Timestamp (de más antiguo a más reciente) Miss u Gamboa :(
+    persistences_sorted = sorted(persistences, key=lambda p: p.Timestamp)
+
     if args.csv_output:
         with open(args.csv_output + 'boromir.output.csv', 'a', newline='') as f_object:
-            for persistence in persistences:
+            for persistence in persistences_sorted:
                 writer_object = writer(f_object)
-                writer_object.writerow([persistence.Timestamp, persistence.Path, persistence.AccessGained, persistence.Technique, persistence.Classification, persistence.Value])
+                writer_object.writerow([
+                    persistence.Timestamp, 
+                    persistence.Path, 
+                    persistence.AccessGained, 
+                    persistence.Technique, 
+                    persistence.Classification, 
+                    persistence.Value
+                ])
             f_object.close()
 
 
